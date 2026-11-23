@@ -75,12 +75,21 @@ router.patch('/:id', async (req, res) => {
   res.json({ customer: await loadCustomer(doc._id) });
 });
 
+// POST /api/customers/:id/qr/regenerate -> new QR token (old printed card stops working)
+router.post('/:id/qr/regenerate', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw new HttpError(400, 'ग़लत ID');
+  const doc = await Customer.findByIdAndUpdate(req.params.id, { qrToken: Customer.newQrToken() }, { returnDocument: 'after' });
+  if (!doc) throw new HttpError(404, 'ग्राहक नहीं मिला');
+  res.json({ customer: await loadCustomer(doc._id) });
+});
+
 // DELETE /api/customers/:id  (removes the customer's entries too)
 router.delete('/:id', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) throw new HttpError(400, 'ग़लत ID');
   const doc = await Customer.findByIdAndDelete(req.params.id);
   if (!doc) throw new HttpError(404, 'ग्राहक नहीं मिला');
   await Transaction.deleteMany({ customer: doc._id });
+  await require('../models/ScanLog').updateMany({ customer: doc._id }, { customer: null });
   res.json({ ok: true });
 });
 

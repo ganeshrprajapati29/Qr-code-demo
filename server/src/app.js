@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const config = require('./config');
 const customers = require('./routes/customers');
 const transactions = require('./routes/transactions');
+const qr = require('./routes/qr');
 const ledger = require('./services/ledger');
 const { notFound, errorHandler } = require('./middleware/errors');
 
@@ -23,7 +24,15 @@ function createApp() {
   app.use(
     helmet({
       // the app may be served over plain HTTP (http://<ip>.sslip.io:<port>) - don't force https sub-requests
-      contentSecurityPolicy: { directives: { upgradeInsecureRequests: null } },
+      contentSecurityPolicy: {
+        directives: {
+          upgradeInsecureRequests: null,
+          // QR scanner draws uploaded photos via blob: URLs; QR cards are data: images
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          mediaSrc: ["'self'", 'blob:'],
+          workerSrc: ["'self'", 'blob:'],
+        },
+      },
       hsts: false,
     })
   );
@@ -57,6 +66,7 @@ function createApp() {
 
   app.use('/api/customers', customers);
   app.use('/api/transactions', transactions);
+  app.use('/api/qr', qr);
   app.use('/api', notFound);
 
   // Optionally serve the built React app (when not behind nginx)

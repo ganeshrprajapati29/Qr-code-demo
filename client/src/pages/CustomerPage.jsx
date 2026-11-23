@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api.js';
 import { rupees, balanceInfo, shortDate, relativeDay } from '../format.js';
 import TxnForm from '../components/TxnForm.jsx';
@@ -7,10 +7,15 @@ import CustomerForm from '../components/CustomerForm.jsx';
 import ReminderSheet from '../components/ReminderSheet.jsx';
 import { useToast } from '../components/Toast.jsx';
 
+const QrCardModal = lazy(() => import('../components/QrCardModal.jsx'));
+
 export default function CustomerPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
+  const [showQr, setShowQr] = useState(false);
+  const [shopName, setShopName] = useState('');
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [txnType, setTxnType] = useState(null);
@@ -29,8 +34,12 @@ export default function CustomerPage() {
 
   useEffect(() => {
     load();
-    api.config().then((c) => setApiEnabled(c.whatsappApiEnabled)).catch(() => {});
+    api.config().then((c) => { setApiEnabled(c.whatsappApiEnabled); setShopName(c.shopName); }).catch(() => {});
   }, [load]);
+
+  useEffect(() => {
+    if (location.state?.fromScan) toast('QR कार्ड से खाता खुला');
+  }, [location.state, toast]);
 
   // running balance after each entry (oldest -> newest)
   const rows = useMemo(() => {
@@ -105,6 +114,7 @@ export default function CustomerPage() {
       <div className="detail-top">
         <Link to="/" className="back">← सभी ग्राहक</Link>
         <div className="detail-tools">
+          <button className="link-btn" onClick={() => setShowQr(true)}>QR कार्ड</button>
           <button className="link-btn" onClick={() => setEditing(true)}>बदलें</button>
           <button className="link-btn c-due" onClick={removeCustomer}>हटाएँ</button>
         </div>
@@ -167,6 +177,11 @@ export default function CustomerPage() {
 
       {txnType && <TxnForm customer={c} defaultType={txnType} onSubmit={addTxn} onClose={() => setTxnType(null)} />}
       {editing && <CustomerForm title="ग्राहक की जानकारी बदलें" submitLabel="सेव करें" initial={c} onSubmit={saveEdit} onClose={() => setEditing(false)} />}
+      {showQr && (
+        <Suspense fallback={null}>
+          <QrCardModal customer={c} shopName={shopName} onClose={() => setShowQr(false)} onChanged={load} />
+        </Suspense>
+      )}
       {reminding && <ReminderSheet customer={c} apiEnabled={apiEnabled} onClose={() => setReminding(false)} onSent={load} />}
     </div>
   );

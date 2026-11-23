@@ -32,5 +32,9 @@ export const api = {
   deleteTxn: (txnId) => request(`/transactions/${txnId}`, { method: 'DELETE' }),
   reminder: (id) => request(`/customers/${id}/reminder`),
   sendReminder: (id) => request(`/customers/${id}/reminder/send`, { method: 'POST' }),
+  resolveQr: (code) => request('/qr/resolve', { method: 'POST', body: { code } }),
+  recentScans: (limit = 8) => request(`/qr/scans?limit=${limit}`),
+  clearScans: () => request('/qr/scans', { method: 'DELETE' }),
+  regenerateQr: (id) => request(`/customers/${id}/qr/regenerate`, { method: 'POST' }),
   logReminder: (id) => request(`/customers/${id}/reminder/logged`, { method: 'POST' }),
 };

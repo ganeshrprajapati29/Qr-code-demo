@@ -145,3 +145,89 @@ test('rejects NoSQL operator injection', async () => {
   await request(app).post('/api/customers').send({ name: { $gt: '' }, phone: '9876543210' }).expect(400);
   await request(app).get('/api/customers').query({ 'search[$ne]': 'x' }).expect(200);
 });
+
+test('QR parser understands customer cards, JSON, key/value and text', () => {
+  const { parseQr } = require('../src/services/qr');
+  assert.deepEqual(parseQr('https://shop.example/c/abcDEF12'), { kind: 'customer', token: 'abcDEF12' });
+  assert.deepEqual(parseQr('UK:abcDEF12_-'), { kind: 'customer', token: 'abcDEF12_-' });
+  assert.deepEqual(parseQr('{"name":"Rahul Sharma"}'), { kind: 'text', name: 'Rahul Sharma' });
+  assert.deepEqual(parseQr('नाम: सीता'), { kind: 'text', name: 'सीता' });
+  assert.deepEqual(parseQr('  Mohan   Lal '), { kind: 'text', name: 'Mohan Lal' });
+  assert.equal(parseQr('https://google.com').kind, 'link');
+  assert.equal(parseQr('BEGIN:VCARD\nVERSION:3.0\nFN:Asha Rani\nEND:VCARD').name, 'Asha Rani');
+  assert.equal(parseQr('x'.repeat(500)).name.length, 158);
+});
+
+test('customer QR card resolves to the customer and is logged', async () => {
+  const created = (await addCustomer('गीता देवी', '9123456789')).body.customer;
+  assert.ok(created.qrToken && created.qrToken.length >= 8);
+  await request(app).post(`/api/customers/${created.id}/transactions`).send({ type: 'udhar', amount: '640' });
+
+  const r = await request(app).post('/api/qr/resolve').send({ code: `https://x.sslip.io/c/${created.qrToken}` }).expect(200);
+  assert.equal(r.body.kind, 'customer');
+  assert.equal(r.body.name, 'गीता देवी');
+  assert.equal(r.body.customer.balance, 640);
+
+  const t = await request(app).post('/api/qr/resolve').send({ code: '{"name":"Rahul Sharma"}' }).expect(200);
+  assert.equal(t.body.kind, 'text');
+  assert.equal(t.body.name, 'Rahul Sharma');
+
+  const scans = await request(app).get('/api/qr/scans').expect(200);
+  assert.deepEqual(scans.body.scans.map((s) => s.name), ['Rahul Sharma', 'गीता देवी']);
+  assert.equal(scans.body.scans[1].customerId, created.id);
+
+  // regenerate -> old card stops working
+  const regen = await request(app).post(`/api/customers/${created.id}/qr/regenerate`).expect(200);
+  assert.notEqual(regen.body.customer.qrToken, created.qrToken);
+  const old = await request(app).post('/api/qr/resolve').send({ code: `UK:${created.qrToken}` }).expect(404);
+  assert.equal(old.body.reason, 'QR_CUSTOMER_NOT_FOUND');
+
+  await request(app).post('/api/qr/resolve').send({ code: '' }).expect(400);
+  await request(app).post('/api/qr/resolve').send({ code: { $gt: '' } }).expect(400);
+  await request(app).post('/api/qr/resolve').send({ code: 'x', log: false }).expect(200);
+  assert.equal((await request(app).get('/api/qr/scans')).body.scans.length, 3);
+  await request(app).delete('/api/qr/scans').expect(200);
+  assert.equal((await request(app).get('/api/qr/scans')).body.scans.length, 0);
+});
+
+test('startup migration gives old customers a QR token', async () => {
+  const { backfillQrTokens } = require('../src/services/migrations');
+  const coll = mongoose.connection.db.collection('customers');
+  await coll.insertMany([
+    { name: 'पुराना ग्राहक', phone: '9000000101' },
+    { name: 'Old Two', phone: '9000000102', qrToken: null },
+  ]);
+  assert.equal(await backfillQrTokens(), 2);
+  const docs = await coll.find().toArray();
+  assert.ok(docs.every((d) => typeof d.qrToken === 'string' && d.qrToken.length >= 8));
+  assert.equal(await backfillQrTokens(), 0);
+});
+
+test('server.js boots against a real database', async () => {
+  const { spawn } = require('node:child_process');
+  const child = spawn(process.execPath, ['src/server.js'], {
+    cwd: require('node:path').join(__dirname, '..'),
+    env: { ...process.env, NODE_ENV: 'production', PORT: '5099', MONGO_URI: mongod.getUri() + 'boot_test' },
+  });
+  let out = '';
+  child.stdout.on('data', (d) => (out += d));
+  child.stderr.on('data', (d) => (out += d));
+  try {
+    let ok = false;
+    for (let i = 0; i < 40 && !ok; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      ok = await fetch('http://127.0.0.1:5099/api/health').then((r) => r.ok).catch(() => false);
+    }
+    assert.ok(ok, 'server did not start: ' + out);
+  } finally {
+    child.kill('SIGTERM');
+  }
+});
+
+test('CSP allows the QR scanner (blob/data images) but stays strict', async () => {
+  const r = await request(app).get('/api/health');
+  const csp = r.headers['content-security-policy'];
+  assert.match(csp, /img-src 'self' data: blob:/);
+  assert.match(csp, /script-src 'self'/);
+  assert.doesNotMatch(csp, /upgrade-insecure-requests/);
+});

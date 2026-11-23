@@ -39,6 +39,7 @@ function shapeCustomer(c) {
     id: String(c._id),
     name: c.name,
     phone: c.phone,
+    qrToken: c.qrToken || null,
     totalUdhar: toRupees(c.totalUdhar),
     totalJama: toRupees(c.totalJama),
     balance: toRupees(balance),
