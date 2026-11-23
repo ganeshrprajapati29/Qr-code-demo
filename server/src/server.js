@@ -8,8 +8,8 @@ async function main() {
   console.log(`[db] connected`);
 
   const app = createApp();
-  const server = app.listen(config.port, '127.0.0.1', () => {
-    console.log(`[api] Udhar Khata API listening on http://127.0.0.1:${config.port} (${config.env})`);
+  const server = app.listen(config.port, config.host, () => {
+    console.log(`[api] Udhar Khata API listening on http://${config.host}:${config.port} (${config.env})`);
   });
 
   const shutdown = async (signal) => {

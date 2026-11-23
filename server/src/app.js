@@ -20,7 +20,13 @@ function createApp() {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
-  app.use(helmet());
+  app.use(
+    helmet({
+      // the app may be served over plain HTTP (http://<ip>.sslip.io:<port>) - don't force https sub-requests
+      contentSecurityPolicy: { directives: { upgradeInsecureRequests: null } },
+      hsts: false,
+    })
+  );
   app.use(compression());
   if (config.env !== 'test') app.use(morgan(config.env === 'production' ? 'combined' : 'dev'));
 

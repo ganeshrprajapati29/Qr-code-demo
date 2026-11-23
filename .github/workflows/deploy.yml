@@ -40,7 +40,7 @@ jobs:
           retention-days: 3
 
   deploy:
-    name: Deploy to VPS
+    name: Deploy to VPS (optional)
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
@@ -51,37 +51,10 @@ jobs:
         id: check
         run: |
           if [ -z "$VPS_HOST" ]; then
-            echo "::warning::VPS_HOST secret is not set - skipping deploy. Add VPS_HOST, VPS_USER and VPS_PASSWORD (or VPS_SSH_KEY) in Settings > Secrets and variables > Actions."
+            echo "::notice::No VPS_HOST secret - skipping auto deploy. Deploy manually with the one-line command in README."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
-        if: steps.check.outputs.skip != 'true'
-      - uses: actions/download-artifact@v4
-        if: steps.check.outputs.skip != 'true'
-        with:
-          name: client-dist
-          path: client/dist
-      - name: Package release
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          mkdir -p release
-          rsync -a --exclude node_modules --exclude .env --exclude tests server client/dist deploy release/ --relative
-          tar -czf udhar-khata-release.tgz -C release .
-          ls -lh udhar-khata-release.tgz
-          echo "DOMAIN=${VPS_HOST//./-}.sslip.io" >> "$GITHUB_ENV"
-      - name: Upload release to VPS
-        if: steps.check.outputs.skip != 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER || 'root' }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
-          source: udhar-khata-release.tgz
-          target: /tmp/udhar-khata-upload
-          overwrite: true
-      - name: Run deploy script on VPS
+      - name: Run installer on VPS
         if: steps.check.outputs.skip != 'true'
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -91,20 +64,4 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT || 22 }}
           command_timeout: 30m
-          envs: DOMAIN
-          script: |
-            set -e
-            rm -rf /tmp/udhar-khata-release && mkdir -p /tmp/udhar-khata-release
-            tar -xzf /tmp/udhar-khata-upload/udhar-khata-release.tgz -C /tmp/udhar-khata-release
-            DOMAIN="$DOMAIN" bash /tmp/udhar-khata-release/deploy/remote-deploy.sh /tmp/udhar-khata-release
-      - name: Verify public URL
-        if: steps.check.outputs.skip != 'true'
-        run: |
-          for scheme in https http; do
-            if curl -fsS --max-time 15 "$scheme://$DOMAIN/api/health"; then
-              echo
-              echo "### ✅ Live: $scheme://$DOMAIN" >> "$GITHUB_STEP_SUMMARY"
-              exit 0
-            fi
-          done
-          echo "Public URL not reachable"; exit 1
+          script: curl -fsSL https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/deploy/install.sh | BRANCH=${{ github.ref_name }} bash

@@ -2,7 +2,7 @@
 
 फ़ोन पर चलने वाला वेब ऐप जिसमें दुकानदार अपने ग्राहकों का **उधार** और **जमा** लिखता है, हर ग्राहक का **कुल बाक़ी** अपने आप देखता है, और एक बटन से **WhatsApp / SMS** पर याद दिलाता है।
 
-**Stack:** Node.js + Express 5 · MongoDB (Mongoose) · React 19 + Vite · nginx + Let's Encrypt (HTTPS) · GitHub Actions (CI/CD)
+**Stack:** Node.js + Express 5 · MongoDB (Mongoose) · React 19 + Vite · nginx + Let's Encrypt (HTTPS) · one-command isolated installer · GitHub Actions CI
 
 > सारा डेमो डेटा नकली है (फ़ोन नंबर `90000000xx`)।
 
@@ -36,8 +36,8 @@
 
 | चीज़ | ख़र्च |
 |---|---|
-| VPS (पहले से मौजूद VPS पर) | ₹0 अतिरिक्त · अलग से लें तो ~₹400–800/माह (1–2 GB RAM) |
-| MongoDB | ₹0 (उसी VPS पर Docker में) |
+| VPS (पहले से मौजूद VPS पर) | ₹0 अतिरिक्त (~300 MB RAM) · अलग से लें तो ~₹400–800/माह (1–2 GB RAM) |
+| MongoDB | ₹0 (उसी VPS पर, अलग प्रोसेस) |
 | डोमेन | ₹0 (`<ip>.sslip.io`) · अपना डोमेन ~₹800–1,000/साल |
 | HTTPS सर्टिफ़िकेट | ₹0 (Let's Encrypt, अपने आप रिन्यू) |
 | मैसेज | ऊपर की तालिका के अनुसार (बटन वाले तरीक़े ₹0) |
@@ -68,23 +68,34 @@ cd client && npm install && npm run dev        # http://localhost:5173
 | GET | `/api/customers/:id/reminder` | मैसेज टेक्स्ट + WhatsApp/SMS लिंक |
 | POST | `/api/customers/:id/reminder/send` | WhatsApp Cloud API से भेजें |
 
-## डिप्लॉय (VPS)
+## डिप्लॉय (VPS) — एक कमांड
 
-`main` पर push होते ही GitHub Actions: टेस्ट → React build → VPS पर कॉपी → `deploy/remote-deploy.sh` चलाता है, जो
-Node 22, Docker में MongoDB, systemd सर्विस, nginx और Let's Encrypt HTTPS सेट करता है और लिंक देता है:
-`https://<VPS-IP-डैश-से>.sslip.io`
+VPS पर root से login करके बस ये चलाएँ:
 
-Repo → **Settings → Secrets and variables → Actions** में ये secrets डालें:
+```bash
+curl -fsSL https://raw.githubusercontent.com/ganeshrprajapati29/Qr-code-demo/main/deploy/install.sh | bash
+```
 
-| Secret | उदाहरण |
+5–8 मिनट में लिंक मिल जाएगा: `https://<VPS-IP-डैश-से>.sslip.io` (जैसे `https://72-60-110-25.sslip.io`)।
+अपडेट के लिए वही कमांड दोबारा चलाएँ — डेटा और सेटिंग्स बनी रहती हैं।
+
+**सर्वर के बाक़ी प्रोजेक्ट्स पर असर नहीं पड़ता:**
+- सब कुछ `/opt/udhar-khata` में — अपना Node.js और अपना MongoDB (सिस्टम का Node/Mongo/Docker न इंस्टॉल होता है न बदलता है)
+- MongoDB सिर्फ़ `127.0.0.1:27027` पर, RAM सीमित (Mongo 700 MB, ऐप 400 MB)
+- अलग Linux user `udharkhata` और अलग systemd सर्विस `udhar-khata`, `udhar-khata-mongo`
+- nginx में सिर्फ़ इसी sslip.io डोमेन की एक नई फ़ाइल; `nginx -t` फ़ेल हो तो फ़ाइल हटा दी जाती है
+- पोर्ट 80 किसी और प्रोग्राम (Apache, Caddy, Docker) के पास हो तो उसे छुआ नहीं जाता — ऐप अपने पोर्ट पर चलता है: `http://<ip>.sslip.io:5055`
+- HTTPS: Let's Encrypt (certbot, न चले तो acme.sh) — सिर्फ़ इसी डोमेन के लिए
+
+| काम | कमांड |
 |---|---|
-| `VPS_HOST` | `72.60.110.25` |
-| `VPS_USER` | `root` |
-| `VPS_PASSWORD` | सर्वर का पासवर्ड (या `VPS_SSH_KEY` में private key) |
+| लॉग देखें | `journalctl -u udhar-khata -f` |
+| सेटिंग्स (दुकान का नाम, WhatsApp टोकन) | `nano /opt/udhar-khata/shared/.env` फिर `systemctl restart udhar-khata` |
+| पूरी तरह हटाएँ | `bash /opt/udhar-khata/app/deploy/uninstall.sh` |
 
-सर्वर पर सेटिंग्स: `/opt/udhar-khata/shared/.env` (दुकान का नाम, WhatsApp API टोकन) → बदलने के बाद `systemctl restart udhar-khata`।
+ऑटो-डिप्लॉय (वैकल्पिक): repo secrets `VPS_HOST`, `VPS_USER`, `VPS_PASSWORD` (या `VPS_SSH_KEY`) डालें — हर push पर GitHub Actions यही installer चलाएगा।
 
 ### WhatsApp Cloud API चालू करना
 1. Meta Business अकाउंट + WhatsApp Business API में नंबर जोड़ें।
 2. Utility template बनाएँ, जैसे: `नमस्ते {{1}} जी, आपका ₹{{2}} बाक़ी है। कृपया जल्द भुगतान करें।`
-3. `.env` में `WA_TOKEN`, `WA_PHONE_NUMBER_ID`, `WA_TEMPLATE_NAME` भरें और सर्विस restart करें।
+3. `.env` में `WA_TOKEN`, `WA_PHONE_NUMBER_ID`, `WA_TEMPLATE_NAME` भरें और `systemctl restart udhar-khata`।
