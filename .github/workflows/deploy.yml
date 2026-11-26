@@ -39,6 +39,21 @@ jobs:
           path: client/dist
           retention-days: 3
 
+  surakshit-gate:
+    name: Surakshit Gate tests & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: API tests (acceptance checklist, real MongoDB in memory)
+        working-directory: surakshit-gate/server
+        run: npm ci && npm test
+      - name: Build web app
+        working-directory: surakshit-gate/client
+        run: npm ci && npm run build
+
   deploy:
     name: Deploy to VPS (optional)
     needs: test
