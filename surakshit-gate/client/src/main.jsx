@@ -8,15 +8,18 @@ import './styles.css';
 import App from './App.jsx';
 import { AuthProvider } from './auth.jsx';
 import { ToastProvider } from './ui/Toast.jsx';
+import { LangProvider } from './i18n.jsx';
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </ToastProvider>
+      <LangProvider>
+        <ToastProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </ToastProvider>
+      </LangProvider>
     </BrowserRouter>
   </StrictMode>
 );

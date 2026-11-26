@@ -8,6 +8,9 @@ const attendanceSchema = new mongoose.Schema(
     date: { type: String, required: true }, // YYYY-MM-DD (Asia/Kolkata)
     inAt: { type: Date, required: true },
     inBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    scans: { type: Number, default: 1 }, // card scans while inside (2+ = repeat)
+    lastScanAt: { type: Date, default: null },
+    repeatScans: [{ at: Date, by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }, alerted: Boolean, _id: false }],
     outAt: { type: Date, default: null },
     outBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     outMode: { type: String, enum: ['parent', 'pickup', null], default: null },

@@ -5,6 +5,7 @@ import Layout, { HOME } from './ui/Layout.jsx';
 import Login from './pages/Login.jsx';
 import More from './pages/More.jsx';
 import { Spinner } from './ui/bits.jsx';
+import { t } from './i18n.jsx';
 
 const GatePage = lazy(() => import('./pages/gate/GatePage.jsx'));
 const NewPickup = lazy(() => import('./pages/gate/NewPickup.jsx'));
@@ -32,7 +33,7 @@ const OFFICE = ['admin', 'principal'];
 
 export default function App() {
   const { loading, user } = useAuth();
-  if (loading) return <Spinner label="खुल रहा है…" />;
+  if (loading) return <Spinner label={t('खुल रहा है…')} />;
   return (
     <Suspense fallback={<Spinner />}>
       <Routes>

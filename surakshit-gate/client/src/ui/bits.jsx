@@ -1,4 +1,5 @@
-import { initial, MSG_STATUS } from '../lib/format.js';
+import { initial, msgStatus } from '../lib/format.js';
+import { t } from '../i18n.jsx';
 
 export function Photo({ src, name, size = 56, className = '' }) {
   return src ? (
@@ -9,7 +10,7 @@ export function Photo({ src, name, size = 56, className = '' }) {
 }
 
 export function Ticks({ status, label = true }) {
-  const s = MSG_STATUS[status] || MSG_STATUS.queued;
+  const s = msgStatus(status);
   return (
     <span className={`ticks tone-${s.tone}`} title={s.label}>
       <b>{s.tick}</b>{label && <span> {s.label}</span>}
@@ -49,7 +50,7 @@ export function ErrorBox({ error, onRetry }) {
   return (
     <div className="alert alert-red" role="alert">
       {error}
-      {onRetry && <button className="link" onClick={onRetry}>दोबारा कोशिश करें</button>}
+      {onRetry && <button className="link" onClick={onRetry}>{t('दोबारा कोशिश करें')}</button>}
     </div>
   );
 }

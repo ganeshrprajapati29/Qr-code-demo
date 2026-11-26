@@ -3,13 +3,14 @@ const mongoose = require('mongoose');
 const Student = require('../models/Student');
 const Attendance = require('../models/Attendance');
 const Pickup = require('../models/Pickup');
-const Alert = require('../models/Alert');
+const Setting = require('../models/Setting');
+const { raise } = require('../services/alerts');
 const Message = require('../models/Message');
 const HttpError = require('../utils/httpError');
 const { requireRole } = require('../middleware/auth');
 const { parseQr, findByCard } = require('../services/cards');
 const { notify, shapeMessage } = require('../services/notify');
-const { dayKey, clock } = require('../utils/time');
+const { dayKey, clock, hhmm } = require('../utils/time');
 const pickups = require('../services/pickups');
 
 const router = express.Router();
@@ -46,16 +47,11 @@ router.post('/scan', async (req, res) => {
   if (!token) throw new HttpError(400, 'यह स्कूल का QR कार्ड नहीं है', { reason: 'NOT_OUR_CARD' });
   const { student, revoked } = await findByCard(token);
   if (!student) {
-    await Alert.create({ type: 'unknown_card', text: `गेट पर अनजान कार्ड स्कैन हुआ (${clock()})। नकली कार्ड हो सकता है।` });
+    await raise('unknown_card', {}, { time: clock() });
     throw new HttpError(404, 'यह कार्ड सिस्टम में नहीं है — नकली कार्ड हो सकता है', { reason: 'UNKNOWN_CARD' });
   }
   if (revoked || !student.active) {
-    await Alert.create({
-      type: 'revoked_card',
-      student: student._id,
-      className: student.className,
-      text: `${student.name} (${student.className}) का बंद/पुराना कार्ड गेट पर स्कैन हुआ (${clock()})। जाँच करें।`,
-    });
+    await raise('revoked_card', { student: student._id, className: student.className }, { student: student.name, cls: student.className, time: clock() });
     throw new HttpError(410, revoked ? 'यह कार्ड बंद कर दिया गया है (खोया/पुराना कार्ड)। बच्चे को न जाने दें, ऑफिस को बताएँ।' : 'यह बच्चा स्कूल की सूची से हटाया जा चुका है।', {
       reason: revoked ? 'CARD_REVOKED' : 'STUDENT_REMOVED',
       student: studentCard(student),
@@ -76,7 +72,30 @@ router.post('/scan', async (req, res) => {
     }
   }
   if (att.outAt) event = 'left';
-  res.json({ event, student: studentCard(student), ...(await state(student, today)) });
+
+  // repeat scan while the child is already inside
+  let repeat = null;
+  if (event === 'inside') {
+    const now = new Date();
+    const s = await Setting.get();
+    const prev = att.lastScanAt || att.inAt;
+    const morning = hhmm(now) < s.dismissalTime; // before home time
+    const mistake = now - prev < s.repeatGraceMin * 60000; // guard scanned twice quickly
+    const alerted = morning && !mistake;
+    // atomic counter, so two guards scanning together are both counted
+    const upd = await Attendance.findOneAndUpdate(
+      { _id: att._id },
+      { $inc: { scans: 1 }, $set: { lastScanAt: now }, $push: { repeatScans: { $each: [{ at: now, by: req.user._id, alerted }], $slice: -20 } } },
+      { returnDocument: 'after' }
+    );
+    repeat = { count: upd.scans, firstAt: att.inAt, previousAt: prev, morning, alerted, dismissalTime: s.dismissalTime };
+    if (alerted) {
+      await raise('repeat_scan', { student: student._id, className: student.className }, {
+        student: student.name, cls: student.className, n: upd.scans, first: clock(att.inAt), time: clock(now),
+      });
+    }
+  }
+  res.json({ event, repeat, student: studentCard(student), ...(await state(student, today)) });
 });
 
 // GET /api/gate/students/:id  -> refresh (message ticks)
@@ -118,7 +137,7 @@ router.get('/recent', async (req, res) => {
   res.json({
     recent: rows
       .filter((r) => r.student)
-      .map((r) => ({ studentId: String(r.student._id), name: r.student.name, className: r.className, inAt: r.inAt, outAt: r.outAt, outMode: r.outMode })),
+      .map((r) => ({ studentId: String(r.student._id), name: r.student.name, className: r.className, inAt: r.inAt, outAt: r.outAt, outMode: r.outMode, scans: r.scans || 1, repeatAlerted: (r.repeatScans || []).some((x) => x.alerted) })),
   });
 });
 

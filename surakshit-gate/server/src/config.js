@@ -29,6 +29,7 @@ const config = {
     appSecret: process.env.WA_APP_SECRET || '',
     verifyToken: process.env.WA_VERIFY_TOKEN || '',
     lang: process.env.WA_TEMPLATE_LANG || 'hi',
+    langEn: process.env.WA_TEMPLATE_LANG_EN || 'en',
     templates: {
       arrival: process.env.WA_TPL_ARRIVAL || 'gate_arrival',
       exit: process.env.WA_TPL_EXIT || 'gate_exit',

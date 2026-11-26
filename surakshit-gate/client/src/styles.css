@@ -327,3 +327,16 @@ img { max-width: 100%; }
 .bubble.warn { border-left: 4px solid #c93434; }
 .bubble small { display: block; text-align: right; color: #667; font-size: 0.72rem; }
 .bubble a { color: #1a56db; }
+
+/* repeat scan + language switch */
+.scan-card.warn { border-color: var(--amber); }
+.scan-card.bad-soft { border-color: var(--red); }
+.lang-switch { display: inline-flex; background: rgba(255, 255, 255, 0.12); border-radius: 999px; padding: 3px; gap: 2px; flex: none; }
+.lang-switch button { border: 0; background: transparent; color: inherit; font-size: 0.8rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; opacity: 0.75; }
+.lang-switch button.on { background: var(--accent); color: #14213d; opacity: 1; }
+.appbar-lang { margin-left: auto; color: #fff; }
+.appbar-brand > div { min-width: 0; }
+.appbar-brand b, .appbar-brand small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card .lang-switch, .login-card .lang-switch { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+.login-lang { margin-bottom: 8px; }
+.lang-root { display: contents; }

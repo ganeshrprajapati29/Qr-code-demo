@@ -50,9 +50,12 @@ jobs:
       - name: API tests (acceptance checklist, real MongoDB in memory)
         working-directory: surakshit-gate/server
         run: npm ci && npm test
+      - name: Check every Hindi text has English
+        working-directory: surakshit-gate/client
+        run: npm ci && npm run i18n:check
       - name: Build web app
         working-directory: surakshit-gate/client
-        run: npm ci && npm run build
+        run: npm run build
 
   deploy:
     name: Deploy to VPS (optional)

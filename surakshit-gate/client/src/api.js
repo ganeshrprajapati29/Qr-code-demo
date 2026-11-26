@@ -1,3 +1,5 @@
+import { getLang, t } from './i18n.jsx';
+
 // All API calls. Sends the CSRF header and turns errors into readable Hindi messages.
 export class ApiError extends Error {
   constructor(message, status, body) {
@@ -17,16 +19,16 @@ export async function api(path, { method = 'GET', body, silent401 = false } = {}
     res = await fetch(`/api${path}`, {
       method,
       credentials: 'same-origin',
-      headers: { 'x-sg-app': '1', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
+      headers: { 'x-sg-app': '1', 'x-sg-lang': getLang(), ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new ApiError('इंटरनेट नहीं है या सर्वर से संपर्क नहीं हुआ', 0);
+    throw new ApiError(t('इंटरनेट नहीं है या सर्वर से संपर्क नहीं हुआ'), 0);
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     if (res.status === 401 && !silent401) onUnauthorized();
-    throw new ApiError(data.error || `दिक्कत आई (${res.status})`, res.status, data);
+    throw new ApiError(data.error || t('दिक्कत आई ({code})', { code: res.status }), res.status, data);
   }
   return data;
 }

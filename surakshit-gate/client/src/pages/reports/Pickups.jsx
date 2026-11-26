@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { get } from '../../api.js';
 import { Spinner, ErrorBox, Empty } from '../../ui/bits.jsx';
 import { time, date as fmtDate, todayKey } from '../../lib/format.js';
+import { t } from '../../i18n.jsx';
 
 const STATUS = {
   completed: ['सौंपा गया', 'chip-green'], denied: ['माँ-बाप ने मना किया', 'chip-red'], awaiting_parent: ['जवाब का इंतज़ार', 'chip-amber'],
@@ -20,34 +21,34 @@ export default function Pickups() {
   }, [from, to, status]);
   return (
     <div className="page">
-      <h1 className="page-title">पिकअप रिकॉर्ड</h1>
+      <h1 className="page-title">{t('पिकअप रिकॉर्ड')}</h1>
       <div className="row gap wrap">
-        <label className="field sm"><span>से</span><input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>
-        <label className="field sm"><span>तक</span><input type="date" value={to} max={todayKey()} onChange={(e) => setTo(e.target.value)} /></label>
+        <label className="field sm"><span>{t('से')}</span><input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>
+        <label className="field sm"><span>{t('तक')}</span><input type="date" value={to} max={todayKey()} onChange={(e) => setTo(e.target.value)} /></label>
       </div>
       <div className="chips mb">
-        {[['', 'सभी'], ['completed', 'सौंपे गए'], ['denied', 'मना किए'], ['locked', 'गलत OTP'], ['expired', 'समय खत्म']].map(([k, l]) => (
+        {[['', t('सभी')], ['completed', t('सौंपे गए')], ['denied', t('मना किए')], ['locked', t('गलत OTP')], ['expired', t('समय खत्म')]].map(([k, l]) => (
           <button key={k} className={status === k ? 'chip-btn on' : 'chip-btn'} onClick={() => setStatus(k)}>{l}</button>
         ))}
       </div>
       <ErrorBox error={error} />
-      {!list ? <Spinner /> : list.length === 0 ? <Empty title="कोई पिकअप नहीं" /> : list.map((p) => (
+      {!list ? <Spinner /> : list.length === 0 ? <Empty title={t('कोई पिकअप नहीं')} /> : list.map((p) => (
         <div key={p.id} className="card record" data-testid="pickup-record">
           <div className="row gap">
-            {p.photoUrl ? <img className="picker-thumb" src={p.photoUrl} alt="लेने वाला" /> : <div className="picker-thumb ph tiny">{p.photoDeleted ? 'फोटो मिटाई गई' : '—'}</div>}
+            {p.photoUrl ? <img className="picker-thumb" src={p.photoUrl} alt={t('लेने वाला')} /> : <div className="picker-thumb ph tiny">{p.photoDeleted ? t('फोटो मिटाई गई') : '—'}</div>}
             <div className="grow">
-              <div className="row between"><b>{p.studentName}</b><span className={`chip ${STATUS[p.status][1]}`}>{STATUS[p.status][0]}</span></div>
-              <div className="muted tiny">क्लास {p.className} · {fmtDate(p.createdAt)}</div>
-              <div>लिया: <b>{p.pickerName}</b>{p.relation && ` (${p.relation})`}</div>
+              <div className="row between"><b>{p.studentName}</b><span className={`chip ${STATUS[p.status][1]}`}>{t(STATUS[p.status][0])}</span></div>
+              <div className="muted tiny">{t('क्लास')} {p.className} · {fmtDate(p.createdAt)}</div>
+              <div>{t('लिया:')} <b>{p.pickerName}</b>{p.relation && ` (${p.relation})`}</div>
             </div>
           </div>
           <dl className="facts">
-            <dt>OTP भेजा</dt><dd>{time(p.otpSentAt)}</dd>
-            <dt>माँ-बाप ने देखा</dt><dd>{p.linkOpenedAt ? time(p.linkOpenedAt) : '—'}</dd>
-            <dt>माँ-बाप का जवाब</dt><dd>{p.decision ? `${p.decision === 'yes' ? 'हाँ' : 'नहीं'} · ${time(p.decisionAt)}${p.decisionBy === 'office' ? ` (ऑफिस: ${p.officeUser})` : ''}` : '—'}</dd>
-            <dt>बच्चा निकला</dt><dd>{p.completedAt ? time(p.completedAt) : '—'}</dd>
-            <dt>गलत OTP कोशिशें</dt><dd className={p.wrongAttempts ? 'c-red' : ''}>{p.wrongAttempts}</dd>
-            <dt>गार्ड</dt><dd>{p.guardName}</dd>
+            <dt>{t('OTP भेजा')}</dt><dd>{time(p.otpSentAt)}</dd>
+            <dt>{t('माँ-बाप ने देखा')}</dt><dd>{p.linkOpenedAt ? time(p.linkOpenedAt) : '—'}</dd>
+            <dt>{t('माँ-बाप का जवाब')}</dt><dd>{p.decision ? `${p.decision === 'yes' ? t('हाँ') : t('नहीं')} · ${time(p.decisionAt)}${p.decisionBy === 'office' ? ` (${t('ऑफिस')}: ${p.officeUser})` : ''}` : '—'}</dd>
+            <dt>{t('बच्चा निकला')}</dt><dd>{p.completedAt ? time(p.completedAt) : '—'}</dd>
+            <dt>{t('गलत OTP कोशिशें')}</dt><dd className={p.wrongAttempts ? 'c-red' : ''}>{p.wrongAttempts}</dd>
+            <dt>{t('गार्ड')}</dt><dd>{p.guardName}</dd>
           </dl>
         </div>
       ))}

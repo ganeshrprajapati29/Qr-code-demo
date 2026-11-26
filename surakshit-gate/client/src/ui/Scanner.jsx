@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { decodeFile, decodeVideo } from '../lib/qrdecode.js';
+import { t } from '../i18n.jsx';
 
 function cameraError(err) {
   const s = String(err?.name || err?.message || err);
-  if (!window.isSecureContext) return 'कैमरा सिर्फ https:// लिंक पर चलता है।';
-  if (/NotAllowed|Permission/i.test(s)) return 'कैमरा की इजाज़त नहीं मिली। ब्राउज़र सेटिंग में इस साइट को Camera की अनुमति दें।';
-  if (/NotFound|Overconstrained/i.test(s)) return 'इस फोन में कैमरा नहीं मिला। “फोटो से” इस्तेमाल करें।';
-  if (/NotReadable|in use|Could not start/i.test(s)) return 'कैमरा किसी दूसरे ऐप में चल रहा है। उसे बंद करके फिर कोशिश करें।';
-  return 'कैमरा चालू नहीं हुआ। “फोटो से” से कोशिश करें।';
+  if (!window.isSecureContext) return t('कैमरा सिर्फ https:// लिंक पर चलता है।');
+  if (/NotAllowed|Permission/i.test(s)) return t('कैमरा की इजाज़त नहीं मिली। ब्राउज़र सेटिंग में इस साइट को Camera की अनुमति दें।');
+  if (/NotFound|Overconstrained/i.test(s)) return t('इस फोन में कैमरा नहीं मिला। “फोटो से” इस्तेमाल करें।');
+  if (/NotReadable|in use|Could not start/i.test(s)) return t('कैमरा किसी दूसरे ऐप में चल रहा है। उसे बंद करके फिर कोशिश करें।');
+  return t('कैमरा चालू नहीं हुआ। “फोटो से” से कोशिश करें।');
 }
 
 // Continuous QR scanner. Calls onCode(text) for each new code (same code ignored for `cooldownMs`).
@@ -76,7 +77,7 @@ export default function Scanner({ onCode, cooldownMs = 4000 }) {
     if (!file) return;
     setError('');
     const text = await decodeFile(file).catch(() => null);
-    if (!text) return setError('इस फोटो में QR नहीं मिला। कार्ड की साफ़, पास से फोटो लें।');
+    if (!text) return setError(t('इस फोटो में QR नहीं मिला। कार्ड की साफ़, पास से फोटो लें।'));
     last.current = { code: '', at: 0 };
     emit(text);
   }
@@ -91,17 +92,17 @@ export default function Scanner({ onCode, cooldownMs = 4000 }) {
             {state === 'starting' ? <div className="spinner light" /> : (
               <svg viewBox="0 0 24 24" width="54" height="54" aria-hidden="true"><path fill="currentColor" d="M4 4h5V2H2v7h2V4Zm11-2v2h5v5h2V2h-7ZM4 15H2v7h7v-2H4v-5Zm16 5h-5v2h7v-7h-2v5ZM7 7h4v4H7V7Zm6 0h4v4h-4V7Zm-6 6h4v4H7v-4Zm8 0h2v2h-2v-2Zm-2 2h2v2h-2v-2Z" /></svg>
             )}
-            <p>{state === 'starting' ? 'कैमरा चालू हो रहा है…' : 'बच्चे का कार्ड कैमरे के सामने रखें'}</p>
+            <p>{state === 'starting' ? t('कैमरा चालू हो रहा है…') : t('बच्चे का कार्ड कैमरे के सामने रखें')}</p>
           </div>
         )}
       </div>
       <div className="row gap mt">
         {state === 'on' ? (
-          <button className="btn btn-outline grow" onClick={stop}>⏸ कैमरा रोकें</button>
+          <button className="btn btn-outline grow" onClick={stop}>⏸ {t('कैमरा रोकें')}</button>
         ) : (
-          <button className="btn btn-primary grow" onClick={start} disabled={state === 'starting'}>📷 कैमरा चालू करें</button>
+          <button className="btn btn-primary grow" onClick={start} disabled={state === 'starting'}>📷 {t('कैमरा चालू करें')}</button>
         )}
-        <button className="btn btn-outline" onClick={() => fileInput.current?.click()} aria-label="फोटो से स्कैन">🖼 फोटो से</button>
+        <button className="btn btn-outline" onClick={() => fileInput.current?.click()} aria-label={t('फोटो से स्कैन')}>🖼 {t('फोटो से')}</button>
       </div>
       <input ref={fileInput} type="file" accept="image/*" hidden data-testid="scan-file" onChange={(e) => { scanFile(e.target.files?.[0]); e.target.value = ''; }} />
       {error && <p className="alert alert-red mt" role="alert">{error}</p>}

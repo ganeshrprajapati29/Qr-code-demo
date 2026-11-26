@@ -24,6 +24,8 @@ const shapeSettings = (s) => ({
   pickupPhotoRetentionDays: s.pickupPhotoRetentionDays,
   backupHour: s.backupHour,
   sessionName: s.sessionName,
+  dismissalTime: s.dismissalTime,
+  repeatGraceMin: s.repeatGraceMin,
   lastBackupAt: s.lastBackupAt,
   messageProvider: config.messages.provider,
 });
@@ -45,6 +47,11 @@ router.put('/settings', admin, async (req, res) => {
   if (b.parentTimeoutMin !== undefined) s.parentTimeoutMin = int(b.parentTimeoutMin, 'जवाब का समय', { min: 2, max: 10 });
   if (b.pickupPhotoRetentionDays !== undefined) s.pickupPhotoRetentionDays = int(b.pickupPhotoRetentionDays, 'फोटो रखने के दिन', { min: 1, max: 365 });
   if (b.backupHour !== undefined) s.backupHour = int(b.backupHour, 'बैकअप का समय', { min: 0, max: 23 });
+  if (b.dismissalTime !== undefined) {
+    if (typeof b.dismissalTime !== 'string' || !/^([01]\d|2[0-3]):[0-5]\d$/.test(b.dismissalTime)) throw new HttpError(400, 'छुट्टी का समय HH:MM में लिखें (जैसे 12:30)');
+    s.dismissalTime = b.dismissalTime;
+  }
+  if (b.repeatGraceMin !== undefined) s.repeatGraceMin = int(b.repeatGraceMin, 'दोबारा स्कैन की छूट', { min: 0, max: 30 });
   if (s.parentTimeoutMin > s.otpTtlMin) throw new HttpError(400, 'जवाब का समय OTP के समय से ज़्यादा नहीं हो सकता');
   await s.save();
   await audit(req, 'settings.edit', Object.keys(b).join(', '));

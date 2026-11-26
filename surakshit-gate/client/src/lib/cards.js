@@ -1,4 +1,5 @@
 import QRCode from 'qrcode';
+import { t } from '../i18n.jsx';
 
 // Credit-card size ID cards (85.6 x 54 mm), 10 per A4 page.
 // Cards are drawn on a canvas (browsers shape Hindi text correctly) and placed in the PDF as images.
@@ -61,7 +62,7 @@ export async function drawCard(student, school) {
   g.fillText(fit(g, school.name, W - 80), 40, 62);
   g.font = font(600, 28);
   g.fillStyle = '#f2b705';
-  g.fillText('छात्र पहचान पत्र · सुरक्षित गेट', 40, 108);
+  g.fillText(t('छात्र पहचान पत्र · सुरक्षित गेट'), 40, 108);
 
   // photo
   const px = 40, py = 175, pw = 250, ph = 300;
@@ -83,7 +84,7 @@ export async function drawCard(student, school) {
     g.fillStyle = '#8a94ab';
     g.font = font(600, 30);
     g.textAlign = 'center';
-    g.fillText('फोटो', px + pw / 2, py + ph / 2);
+    g.fillText(t('फोटो'), px + pw / 2, py + ph / 2);
     g.textAlign = 'left';
   }
 
@@ -101,18 +102,18 @@ export async function drawCard(student, school) {
   g.fillText(fit(g, student.name, tw), tx, 215);
   g.font = font(600, 38);
   g.fillStyle = '#334';
-  g.fillText(fit(g, `क्लास: ${student.className}`, tw), tx, 285);
-  if (student.rollNo) g.fillText(fit(g, `रोल: ${student.rollNo}`, tw), tx, 340);
+  g.fillText(fit(g, t('क्लास: {c}', { c: student.className }), tw), tx, 285);
+  if (student.rollNo) g.fillText(fit(g, t('रोल: {r}', { r: student.rollNo }), tw), tx, 340);
   g.font = font(400, 26);
   g.fillStyle = '#667';
-  g.fillText(fit(g, `कार्ड नं. ${student.cardVersion}`, tw), tx, 400);
+  g.fillText(fit(g, t('कार्ड नं. {n}', { n: student.cardVersion }), tw), tx, 400);
 
   // footer
   g.fillStyle = '#f4f5f8';
   g.fillRect(0, H - 95, W, 95);
   g.fillStyle = '#445';
   g.font = font(400, 26);
-  g.fillText(fit(g, `यह कार्ड मिले तो स्कूल को लौटाएँ${school.officePhone ? ` · फोन ${school.officePhone}` : ''}`, W - 80), 40, H - 48);
+  g.fillText(fit(g, t('यह कार्ड मिले तो स्कूल को लौटाएँ') + (school.officePhone ? ' · ' + t('फोन {p}', { p: school.officePhone }) : ''), W - 80), 40, H - 48);
   // border
   g.strokeStyle = '#c9cfdc';
   g.lineWidth = 4;
@@ -124,7 +125,7 @@ export async function downloadCardsPdf(students, filename = 'qr-cards.pdf', onPr
   const [{ jsPDF }, me] = await Promise.all([import('jspdf'), fetch('/api/auth/me', { credentials: 'same-origin' }).then((r) => r.json())]);
   await document.fonts.load('800 40px Mukta');
   await document.fonts.load('600 40px Mukta');
-  const school = me.school || { name: 'स्कूल' };
+  const school = me.school || { name: t('स्कूल') };
   const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
   const cw = 85.6, ch = 54, gapX = 6, gapY = 3;
   const mx = (210 - 2 * cw - gapX) / 2;

@@ -5,7 +5,7 @@ const config = require('../config');
 const Student = require('../models/Student');
 const Attendance = require('../models/Attendance');
 const Pickup = require('../models/Pickup');
-const Alert = require('../models/Alert');
+const { raise } = require('../services/alerts');
 const Setting = require('../models/Setting');
 const HttpError = require('../utils/httpError');
 const { requireRole } = require('../middleware/auth');
@@ -131,15 +131,9 @@ router.post('/:id/verify', gateStaff, async (req, res) => {
     const lock = p.wrongAttempts >= svc.MAX_WRONG;
     if (lock) p.status = 'locked';
     await p.save();
-    await Alert.create({
-      type: lock ? 'pickup_locked' : 'wrong_otp',
-      student: p.student,
-      pickup: p._id,
-      className: p.className,
-      text: `${p.studentName} (${p.className}) के पिकअप पर गलत OTP डाला गया (${p.wrongAttempts} बार)। लेने वाला: ${p.pickerName}${lock ? '। पिकअप बंद कर दिया गया।' : ''}`,
-    });
+    await raise(lock ? 'pickup_locked' : 'wrong_otp', { student: p.student, pickup: p._id, className: p.className }, { student: p.studentName, cls: p.className, n: p.wrongAttempts, picker: p.pickerName });
     if (student) {
-      await notify({ student, kind: 'alert', pickup: p._id, data: { text: `${student.name} के पिकअप पर गलत OTP डाला गया (${p.wrongAttempts} बार), लेने वाला: ${p.pickerName}।` } });
+      await notify({ student, kind: 'alert', pickup: p._id, data: { text: `${student.name} के पिकअप पर गलत OTP डाला गया (${p.wrongAttempts} बार), लेने वाला: ${p.pickerName}।`, textEn: `Wrong OTP entered for the pickup of ${student.name} (${p.wrongAttempts} time${p.wrongAttempts > 1 ? 's' : ''}). Person: ${p.pickerName}.` } });
     }
     throw new HttpError(lock ? 423 : 400, lock ? 'बहुत बार गलत OTP। पिकअप बंद — बच्चे को न सौंपें, ऑफिस को बताएँ।' : `OTP गलत है। बच्चे को न सौंपें। (${p.wrongAttempts}/${svc.MAX_WRONG})`, {
       reason: lock ? 'LOCKED' : 'WRONG_OTP',
@@ -198,7 +192,7 @@ router.post('/:id/office-decision', office, async (req, res) => {
   p.status = decision === 'yes' ? 'approved' : 'denied';
   await p.save();
   if (decision === 'no') {
-    await Alert.create({ type: 'parent_denied', student: p.student, pickup: p._id, className: p.className, text: `${p.studentName} (${p.className}): माँ-बाप ने फोन पर मना किया (ऑफिस: ${req.user.name})। बच्चा न सौंपें।` });
+    await raise('parent_denied_office', { student: p.student, pickup: p._id, className: p.className }, { student: p.studentName, cls: p.className, by: req.user.name }, 'parent_denied');
   }
   await respond(req, res, p);
 });

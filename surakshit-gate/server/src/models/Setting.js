@@ -8,6 +8,8 @@ const DEFAULTS = {
   pickupPhotoRetentionDays: 30,
   backupHour: 2,
   sessionName: '2026-27',
+  dismissalTime: '12:00',
+  repeatGraceMin: 2,
 };
 
 const settingSchema = new mongoose.Schema(
@@ -20,6 +22,10 @@ const settingSchema = new mongoose.Schema(
     pickupPhotoRetentionDays: { type: Number, default: DEFAULTS.pickupPhotoRetentionDays, min: 1, max: 365 },
     backupHour: { type: Number, default: DEFAULTS.backupHour, min: 0, max: 23 },
     sessionName: { type: String, default: DEFAULTS.sessionName, maxlength: 20 },
+    // before this time (India) a second scan of a child who is inside raises an alert
+    dismissalTime: { type: String, default: DEFAULTS.dismissalTime, match: /^([01]\d|2[0-3]):[0-5]\d$/ },
+    // a repeat within this many minutes is treated as the guard scanning twice by mistake
+    repeatGraceMin: { type: Number, default: DEFAULTS.repeatGraceMin, min: 0, max: 30 },
     lastBackupAt: { type: Date, default: null },
   },
   { timestamps: true }

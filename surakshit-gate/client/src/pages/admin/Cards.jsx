@@ -4,6 +4,7 @@ import { get } from '../../api.js';
 import { Spinner, ErrorBox } from '../../ui/bits.jsx';
 import { useToast } from '../../ui/Toast.jsx';
 import { downloadCardsPdf, drawCard } from '../../lib/cards.js';
+import { t } from '../../i18n.jsx';
 
 export default function Cards() {
   const toast = useToast();
@@ -33,10 +34,10 @@ export default function Cards() {
     setError('');
     try {
       const r = await get(`/students/cards${cls ? `?class=${cls}` : ''}`);
-      if (!r.students.length) return setError('इस क्लास में कोई बच्चा नहीं');
+      if (!r.students.length) return setError(t('इस क्लास में कोई बच्चा नहीं'));
       setProgress([0, r.students.length]);
       await downloadCardsPdf(r.students, `qr-cards-${cls || 'sabhi'}.pdf`, (a, b) => setProgress([a, b]));
-      toast(`${r.students.length} कार्ड की PDF डाउनलोड हुई`);
+      toast(t('{n} कार्ड की PDF डाउनलोड हुई', { n: r.students.length }));
     } catch (e) {
       setError(e.message);
     } finally {
@@ -47,18 +48,18 @@ export default function Cards() {
   if (!classes) return error ? <div className="page"><ErrorBox error={error} /></div> : <Spinner />;
   return (
     <div className="page">
-      <h1 className="page-title">QR कार्ड प्रिंट</h1>
-      <p className="muted">A4 पेज पर 10 कार्ड (क्रेडिट-कार्ड साइज़)। हर QR अलग और रैंडम है — उसमें बच्चे का नाम या नंबर नहीं है।</p>
+      <h1 className="page-title">{t('QR कार्ड प्रिंट')}</h1>
+      <p className="muted">{t('A4 पेज पर 10 कार्ड (क्रेडिट-कार्ड साइज़)। हर QR अलग और रैंडम है — उसमें बच्चे का नाम या नंबर नहीं है।')}</p>
       <div className="chips mb">
-        <button className={!cls ? 'chip-btn on' : 'chip-btn'} onClick={() => setCls('')}>सभी</button>
+        <button className={!cls ? 'chip-btn on' : 'chip-btn'} onClick={() => setCls('')}>{t('सभी')}</button>
         {classes.map((c) => <button key={c.className} className={cls === c.className ? 'chip-btn on' : 'chip-btn'} onClick={() => setCls(c.className)}>{c.className} ({c.count})</button>)}
       </div>
-      {preview ? <img className="card-preview" src={preview} alt="कार्ड का नमूना" /> : <div className="skeleton card-preview" />}
+      {preview ? <img className="card-preview" src={preview} alt={t('कार्ड का नमूना')} /> : <div className="skeleton card-preview" />}
       <ErrorBox error={error} />
       <button className="btn btn-primary btn-lg btn-block mt" onClick={make} disabled={Boolean(progress)}>
-        {progress ? `बन रहा है… ${progress[0]}/${progress[1]}` : `⬇ ${cls ? `क्लास ${cls} के` : 'सभी'} कार्ड की PDF`}
+        {progress ? t('बन रहा है… {a}/{b}', { a: progress[0], b: progress[1] }) : '⬇ ' + (cls ? t('क्लास {c} के कार्ड की PDF', { c: cls }) : t('सभी कार्ड की PDF'))}
       </button>
-      <p className="tiny muted mt">खोया हुआ कार्ड: “बच्चे” में बच्चे को खोलें → “कार्ड खो गया — नया बनाएँ”। पुराना QR उसी समय बंद हो जाता है।</p>
+      <p className="tiny muted mt">{t('खोया हुआ कार्ड: “बच्चे” में बच्चे को खोलें → “कार्ड खो गया — नया बनाएँ”। पुराना QR उसी समय बंद हो जाता है।')}</p>
     </div>
   );
 }

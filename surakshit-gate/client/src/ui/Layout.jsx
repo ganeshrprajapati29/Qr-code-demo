@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../auth.jsx';
-import { ROLE_LABEL } from '../lib/format.js';
+import { roleLabel } from '../lib/format.js';
+import { t, LangSwitch } from '../i18n.jsx';
 
 const I = {
   gate: 'M3 5h4v14H3zM17 5h4v14h-4zM9 9h6v2H9zm0 4h6v2H9z',
@@ -13,7 +14,7 @@ const I = {
 };
 
 export const TABS = {
-  guard: [['/gate', 'गेट', 'gate'], ['/more', 'और', 'more']],
+  guard: [['/gate', 'गेट', 'gate'], ['/more', 'और', 'more']], // labels go through t() when shown
   teacher: [['/teacher', 'परेड', 'parade'], ['/more', 'और', 'more']],
   principal: [['/today', 'आज', 'today'], ['/pickups', 'पिकअप', 'pickup'], ['/students', 'बच्चे', 'kids'], ['/more', 'और', 'more']],
   admin: [['/today', 'आज', 'today'], ['/gate', 'गेट', 'gate'], ['/students', 'बच्चे', 'kids'], ['/messages', 'मैसेज', 'msg'], ['/more', 'और', 'more']],
@@ -29,19 +30,20 @@ export default function Layout() {
         <div className="appbar-brand">
           <img src="/icon.svg" alt="" width="30" height="30" />
           <div>
-            <b>{school?.name || 'सुरक्षित गेट'}</b>
-            <small>{user.name} · {ROLE_LABEL[user.role]}</small>
+            <b>{school?.name || t('सुरक्षित गेट')}</b>
+            <small>{user.name} · {roleLabel(user.role)}</small>
           </div>
+          <LangSwitch className="appbar-lang" />
         </div>
       </header>
       <main className="main">
         <Outlet />
       </main>
-      <nav className="tabbar" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }} aria-label="मुख्य मेन्यू">
+      <nav className="tabbar" style={{ gridTemplateColumns: `repeat(${tabs.length}, 1fr)` }} aria-label={t('मुख्य मेन्यू')}>
         {tabs.map(([to, label, icon]) => (
           <NavLink key={to} to={to} className={({ isActive }) => (isActive ? 'tab active' : 'tab')}>
             <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path fill="currentColor" d={I[icon]} /></svg>
-            <span>{label}</span>
+            <span>{t(label)}</span>
           </NavLink>
         ))}
       </nav>

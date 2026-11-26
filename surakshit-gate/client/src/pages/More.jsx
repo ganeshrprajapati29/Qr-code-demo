@@ -4,7 +4,9 @@ import { useAuth, can } from '../auth.jsx';
 import { post } from '../api.js';
 import { useToast } from '../ui/Toast.jsx';
 import Modal from '../ui/Modal.jsx';
-import { ROLE_LABEL } from '../lib/format.js';
+import { roleLabel } from '../lib/format.js';
+import { LangSwitch } from '../i18n.jsx';
+import { t } from '../i18n.jsx';
 
 export default function More() {
   const { user, logout } = useAuth();
@@ -22,21 +24,22 @@ export default function More() {
   ].filter(Boolean);
   return (
     <div className="page">
-      <h1 className="page-title">और</h1>
+      <h1 className="page-title">{t('और')}</h1>
       <div className="card profile">
         <b>{user.name}</b>
-        <span className="muted">{user.username} · {ROLE_LABEL[user.role]}{user.classes?.length ? ` · क्लास ${user.classes.join(', ')}` : ''}</span>
+        <span className="muted">{user.username} · {roleLabel(user.role)}{user.classes?.length ? ` · ${t('क्लास')} ${user.classes.join(', ')}` : ''}</span>
       </div>
       {items.length > 0 && (
         <ul className="menu">
           {items.map(([to, icon, label]) => (
-            <li key={to}><Link to={to}><span aria-hidden="true">{icon}</span>{label}<i aria-hidden="true">›</i></Link></li>
+            <li key={to}><Link to={to}><span aria-hidden="true">{icon}</span>{t(label)}<i aria-hidden="true">›</i></Link></li>
           ))}
         </ul>
       )}
+      <div className="card row between center-v"><b>{t('भाषा')} / Language</b><LangSwitch /></div>
       <ul className="menu">
-        <li><button onClick={() => setPw(true)}><span aria-hidden="true">🔑</span>पासवर्ड बदलें<i aria-hidden="true">›</i></button></li>
-        <li><button onClick={logout} className="c-red"><span aria-hidden="true">⎋</span>लॉगआउट<i aria-hidden="true">›</i></button></li>
+        <li><button onClick={() => setPw(true)}><span aria-hidden="true">🔑</span>{t('पासवर्ड बदलें')}<i aria-hidden="true">›</i></button></li>
+        <li><button onClick={logout} className="c-red"><span aria-hidden="true">⎋</span>{t('लॉगआउट')}<i aria-hidden="true">›</i></button></li>
       </ul>
       {pw && <PasswordModal onClose={() => setPw(false)} />}
     </div>
@@ -52,19 +55,19 @@ function PasswordModal({ onClose }) {
     e.preventDefault();
     try {
       await post('/auth/password', { current, next });
-      toast('पासवर्ड बदल गया');
+      toast(t('पासवर्ड बदल गया'));
       onClose();
     } catch (err) {
       setError(err.message);
     }
   }
   return (
-    <Modal title="पासवर्ड बदलें" onClose={onClose}>
+    <Modal title={t('पासवर्ड बदलें')} onClose={onClose}>
       <form className="form" onSubmit={submit}>
-        <label className="field"><span>मौजूदा पासवर्ड</span><input type="password" value={current} onChange={(e) => setC(e.target.value)} autoComplete="current-password" /></label>
-        <label className="field"><span>नया पासवर्ड (कम से कम 8 अक्षर)</span><input type="password" value={next} onChange={(e) => setN(e.target.value)} autoComplete="new-password" /></label>
+        <label className="field"><span>{t('मौजूदा पासवर्ड')}</span><input type="password" value={current} onChange={(e) => setC(e.target.value)} autoComplete="current-password" /></label>
+        <label className="field"><span>{t('नया पासवर्ड (कम से कम 8 अक्षर)')}</span><input type="password" value={next} onChange={(e) => setN(e.target.value)} autoComplete="new-password" /></label>
         {error && <p className="alert alert-red">{error}</p>}
-        <button className="btn btn-primary">सेव करें</button>
+        <button className="btn btn-primary">{t('सेव करें')}</button>
       </form>
     </Modal>
   );

@@ -17,7 +17,7 @@ module.exports = {
       type: 'template',
       template: {
         name: template,
-        language: { code: wa.lang },
+        language: { code: msg.lang === 'en' ? wa.langEn : wa.lang },
         components: [{ type: 'body', parameters: msg.vars.map((v) => ({ type: 'text', text: String(v).slice(0, 1000) })) }],
       },
     };

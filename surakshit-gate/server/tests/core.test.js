@@ -337,3 +337,82 @@ test('WhatsApp webhook: signature required, statuses update, bad number alerts',
   assert.ok(await Alert.exists({ type: 'message_failed' }));
   config.whatsapp.appSecret = '';
 });
+
+test('NEW: second morning scan while inside -> alert (quick double scan ignored)', async () => {
+  const Setting = require('../src/models/Setting');
+  const Attendance = require('../src/models/Attendance');
+  const admin = await as('admin');
+  const guard = await as('guard');
+  const s = await addStudent(admin);
+  await Setting.updateOne({ _id: 'main' }, { dismissalTime: '23:59', repeatGraceMin: 2 }, { upsert: true }); // whole day = "morning"
+
+  await guard.post('/api/gate/scan').send({ code: s.qr }).expect(200);
+  // guard scans again by mistake a few seconds later: warning only, no alert
+  const quick = (await guard.post('/api/gate/scan').send({ code: s.qr }).expect(200)).body;
+  assert.equal(quick.repeat.count, 2);
+  assert.equal(quick.repeat.alerted, false);
+  assert.equal(await Alert.countDocuments({ type: 'repeat_scan' }), 0);
+
+  // later in the morning the same card comes again -> alert for principal
+  await Attendance.updateOne({}, { lastScanAt: new Date(Date.now() - 10 * 60000) });
+  const again = (await guard.post('/api/gate/scan').send({ code: s.qr }).expect(200)).body;
+  assert.equal(again.event, 'inside');
+  assert.equal(again.repeat.count, 3);
+  assert.equal(again.repeat.alerted, true);
+  const al = (await admin.get('/api/alerts').expect(200)).body.alerts.find((a) => a.type === 'repeat_scan');
+  assert.match(al.text, /3 बार स्कैन/);
+  assert.match(al.textEn, /scanned 3 times this morning/);
+  const recent = (await guard.get('/api/gate/recent').expect(200)).body.recent[0];
+  assert.equal(recent.scans, 3);
+  assert.equal(recent.repeatAlerted, true);
+
+  // after home time a repeat scan is normal (exit), no alert
+  await Setting.updateOne({ _id: 'main' }, { dismissalTime: '00:00' });
+  await Attendance.updateOne({}, { lastScanAt: new Date(Date.now() - 10 * 60000) });
+  const home = (await guard.post('/api/gate/scan').send({ code: s.qr }).expect(200)).body;
+  assert.equal(home.repeat.morning, false);
+  assert.equal(home.repeat.alerted, false);
+  assert.equal(await Alert.countDocuments({ type: 'repeat_scan' }), 1);
+
+  // settings validation
+  await admin.put('/api/admin/settings').send({ dismissalTime: '25:00' }).expect(400);
+  const ok = await admin.put('/api/admin/settings').send({ dismissalTime: '12:30', repeatGraceMin: 3 }).expect(200);
+  assert.equal(ok.body.settings.dismissalTime, '12:30');
+});
+
+test('NEW: English language for errors, alerts and parent messages', async () => {
+  const admin = await as('admin');
+  const guard = await as('guard');
+  // errors follow the x-sg-lang header
+  const en = await guard.post('/api/gate/scan').set('x-sg-lang', 'en').send({ code: 'hello' }).expect(400);
+  assert.equal(en.body.error, "This is not the school's QR card");
+  const hi = await guard.post('/api/gate/scan').send({ code: 'hello' }).expect(400);
+  assert.equal(hi.body.error, 'यह स्कूल का QR कार्ड नहीं है');
+  const v = await admin.post('/api/students').set('x-sg-lang', 'en').send({ name: '', className: '5A', guardianPhone: '9876543210' }).expect(400);
+  assert.equal(v.body.error, "Please enter child's name");
+  const login = await (await as()).post('/api/auth/login').set('x-sg-lang', 'en').send({ username: 'guard', password: 'x' }).expect(401);
+  assert.equal(login.body.error, 'Wrong username or password');
+
+  // parent language decides message + link page language
+  const s = await addStudent(admin, { guardianLang: 'en' });
+  assert.equal(s.guardianLang, 'en');
+  await guard.post('/api/gate/scan').send({ code: s.qr }).expect(200);
+  await notify.flush();
+  const m = await Message.findOne({ kind: 'arrival' });
+  assert.equal(m.lang, 'en');
+  assert.match(m.text, /reached school at/);
+  await guard.post('/api/gate/scan').send({ code: s.qr }).expect(200);
+  await guard.post('/api/pickups').send({ studentId: s.id, pickerName: 'Rakesh', relation: 'Uncle', photo: JPEG }).expect(201);
+  await notify.flush();
+  const pm = await Message.findOne({ kind: 'pickup_request' });
+  assert.match(pm.text, /has come to pick up your child/);
+  const token = pm.text.match(/\/p\/([A-Za-z0-9_-]+)/)[1];
+  const page = (await (await as()).get(`/api/public/pickup/${token}`).expect(200)).body;
+  assert.equal(page.lang, 'en');
+
+  // CSV language column
+  const csv = 'name,class,mobile,language\nAsha,5A,9876511111,English\nरानी,5A,9876511112,हिंदी\n';
+  await admin.post('/api/students/import').send({ csv }).expect(201);
+  const list = (await admin.get('/api/students?search=98765111').expect(200)).body.students;
+  assert.deepEqual(list.map((x) => x.guardianLang).sort(), ['en', 'hi']);
+});

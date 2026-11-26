@@ -1,7 +1,7 @@
 const config = require('../../config');
 const Message = require('../../models/Message');
 const Student = require('../../models/Student');
-const Alert = require('../../models/Alert');
+const { raise } = require('../alerts');
 const Setting = require('../../models/Setting');
 const texts = require('../texts');
 
@@ -30,12 +30,9 @@ async function updateStatus(msgOrId, status, { error = '', numberProblem = false
         student.phoneStatus = 'failed';
         student.phoneStatusNote = numberProblem ? 'नंबर गलत या बंद है' : 'मैसेज नहीं पहुँचा';
         await student.save();
-        await Alert.create({
-          type: 'message_failed',
-          student: student._id,
-          className: student.className,
-          pickup: msg.pickup,
-          text: `${student.name} (${student.className}) के माँ-बाप (${student.guardianPhone}) को मैसेज नहीं पहुँचा: ${student.phoneStatusNote}। नंबर जाँचें।`,
+        await raise('message_failed', { student: student._id, pickup: msg.pickup, className: student.className }, {
+          student: student.name, cls: student.className, phone: student.guardianPhone,
+          reasonHi: student.phoneStatusNote, reasonEn: numberProblem ? 'number is wrong or switched off' : 'not delivered',
         });
       }
     } else if (status === 'delivered' || status === 'read') {
@@ -48,9 +45,10 @@ async function updateStatus(msgOrId, status, { error = '', numberProblem = false
 // Creates the message record and sends it in the background (gate screen never waits on the network).
 async function notify({ student, kind, data, pickup = null, to }) {
   const s = await Setting.get();
-  const { text, vars } = texts[kind]({ school: s.schoolName, ...data });
+  const lang = student?.guardianLang === 'en' ? 'en' : 'hi';
+  const { text, vars } = texts[kind]({ school: s.schoolName, ...data }, lang);
   const p = provider();
-  const msg = await Message.create({ to: to || student.guardianPhone, student: student?._id, pickup, kind, text, vars, provider: p.name, status: 'queued' });
+  const msg = await Message.create({ to: to || student.guardianPhone, student: student?._id, pickup, kind, text, lang, vars, provider: p.name, status: 'queued' });
   const job = (async () => {
     try {
       const r = await p.send(msg);

@@ -1,3 +1,5 @@
+import { t } from '../i18n.jsx';
+
 // Resize any image (file or canvas) to a JPEG data URL – keeps uploads small on slow networks.
 export async function fileToDataUrl(file, max = 720, quality = 0.82) {
   const url = URL.createObjectURL(file);
@@ -5,7 +7,7 @@ export async function fileToDataUrl(file, max = 720, quality = 0.82) {
     const img = await new Promise((resolve, reject) => {
       const i = new Image();
       i.onload = () => resolve(i);
-      i.onerror = () => reject(new Error('फोटो खुल नहीं पाई'));
+      i.onerror = () => reject(new Error(t('फोटो खुल नहीं पाई')));
       i.src = url;
     });
     return drawScaled(img, img.naturalWidth, img.naturalHeight, max, quality);

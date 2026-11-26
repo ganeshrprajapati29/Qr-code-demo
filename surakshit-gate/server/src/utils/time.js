@@ -15,5 +15,8 @@ function isMonthKey(s) {
   return typeof s === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 }
 const minutes = (n) => n * 60 * 1000;
+const hmFmt = new Intl.DateTimeFormat('en-GB', { timeZone: config.timeZone, hour: '2-digit', minute: '2-digit', hour12: false });
+// 'HH:MM' (24h) in India time
+const hhmm = (d = new Date()) => hmFmt.format(d);
 
-module.exports = { dayKey, clock, isDayKey, isMonthKey, minutes };
+module.exports = { dayKey, clock, hhmm, isDayKey, isMonthKey, minutes };

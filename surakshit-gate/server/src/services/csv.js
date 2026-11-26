@@ -31,6 +31,7 @@ const HEADER_MAP = {
   guardianPhone: ['mobile', 'phone', 'parent mobile', 'parent phone', 'मोबाइल', 'माँ-बाप का मोबाइल', 'अभिभावक मोबाइल', 'guardian phone'],
   guardianName: ['parent', 'parent name', 'guardian', 'guardian name', 'अभिभावक', 'माता/पिता', 'पिता का नाम'],
   rollNo: ['roll', 'roll no', 'roll number', 'रोल', 'रोल नंबर'],
+  guardianLang: ['language', 'lang', 'भाषा'],
 };
 
 function mapHeader(cells) {

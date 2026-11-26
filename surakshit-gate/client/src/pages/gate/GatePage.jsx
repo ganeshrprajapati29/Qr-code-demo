@@ -6,6 +6,7 @@ import { Photo, Ticks } from '../../ui/bits.jsx';
 import { useToast } from '../../ui/Toast.jsx';
 import { beep } from '../../lib/image.js';
 import { time } from '../../lib/format.js';
+import { t } from '../../i18n.jsx';
 
 export default function GatePage() {
   const toast = useToast();
@@ -54,7 +55,7 @@ export default function GatePage() {
     try {
       const data = await post('/gate/exit', { studentId: id });
       setResult({ ok: true, data, at: Date.now() });
-      toast(`${data.student.name} निकल गए — माँ-बाप को मैसेज गया`);
+      toast(t('{name} निकल गए — माँ-बाप को मैसेज गया', { name: data.student.name }));
       watch(id);
       loadRecent();
     } catch (e) {
@@ -67,7 +68,7 @@ export default function GatePage() {
   return (
     <div className="page gate">
       <Scanner onCode={onCode} />
-      {busy && !result && <p className="muted center mt">जाँच हो रही है…</p>}
+      {busy && !result && <p className="muted center mt">{t('जाँच हो रही है…')}</p>}
       {result && (result.ok ? (
         <ScanCard key={result.at} data={result.data} busy={busy} onExit={exitWithParent}
           onPickup={() => navigate(`/gate/pickup/new/${result.data.student.id}`)}
@@ -78,7 +79,7 @@ export default function GatePage() {
           {result.student && (
             <div className="row gap center-v">
               <Photo src={result.student.photoUrl} name={result.student.name} size={64} />
-              <div><b>{result.student.name}</b><div className="muted">क्लास {result.student.className}</div></div>
+              <div><b>{result.student.name}</b><div className="muted">{t('क्लास')} {result.student.className}</div></div>
             </div>
           )}
           <p className="scan-bad-text">{result.error}</p>
@@ -87,15 +88,15 @@ export default function GatePage() {
 
       {recent.length > 0 && (
         <section className="mt-lg">
-          <h2 className="section-title">आज के स्कैन</h2>
+          <h2 className="section-title">{t('आज के स्कैन')}</h2>
           <ul className="list">
             {recent.map((r) => (
               <li key={r.studentId} className="list-row">
                 <div className="grow">
                   <b>{r.name}</b> <span className="muted">· {r.className}</span>
-                  <div className="tiny muted">आया {time(r.inAt)}{r.outAt ? ` · निकला ${time(r.outAt)}${r.outMode === 'pickup' ? ' (पिकअप)' : ''}` : ''}</div>
+                  <div className="tiny muted">{t('आया {time}', { time: time(r.inAt) })}{r.outAt ? ` · ${t('निकला {time}', { time: time(r.outAt) })}${r.outMode === 'pickup' ? ` (${t('पिकअप')})` : ''}` : ''}{r.scans > 1 && <span className={r.repeatAlerted ? 'c-red' : ''}> · {t('{n}× स्कैन', { n: r.scans })}{r.repeatAlerted ? ' ⚠' : ''}</span>}</div>
                 </div>
-                <span className={`chip ${r.outAt ? 'chip-grey' : 'chip-green'}`}>{r.outAt ? 'निकल गया' : 'अंदर'}</span>
+                <span className={`chip ${r.outAt ? 'chip-grey' : 'chip-green'}`}>{r.outAt ? t('निकल गया') : t('अंदर')}</span>
               </li>
             ))}
           </ul>
@@ -106,46 +107,54 @@ export default function GatePage() {
 }
 
 function ScanCard({ data, busy, onExit, onPickup, onOpenPickup }) {
-  const { student, attendance, event, arrivalMessage, exitMessage, openPickupId } = data;
-  const label = event === 'arrived' ? 'स्कूल पहुँचा ✓' : attendance?.outAt ? 'निकल चुका है' : 'स्कूल में है';
+  const { student, attendance, event, arrivalMessage, exitMessage, openPickupId, repeat } = data;
+  const warnRepeat = repeat && repeat.morning;
+  const label = event === 'arrived' ? t('स्कूल पहुँचा ✓') : attendance?.outAt ? t('निकल चुका है') : t('स्कूल में है');
   return (
-    <div className={`scan-card ${event === 'arrived' ? 'good' : attendance?.outAt ? 'grey' : 'info'}`} data-testid="scan-card">
+    <div className={`scan-card ${warnRepeat ? (repeat.alerted ? 'bad-soft' : 'warn') : event === 'arrived' ? 'good' : attendance?.outAt ? 'grey' : 'info'}`} data-testid="scan-card">
       <div className="scan-head">
         <Photo src={student.photoUrl} name={student.name} size={112} className="scan-photo" />
         <div className="grow">
           <div className="scan-name" data-testid="scan-name">{student.name}</div>
-          <div className="scan-class">क्लास {student.className}{student.rollNo ? ` · रोल ${student.rollNo}` : ''}</div>
+          <div className="scan-class">{t('क्लास')} {student.className}{student.rollNo ? ` · ${t('रोल')} ${student.rollNo}` : ''}</div>
           <span className={`chip ${event === 'arrived' ? 'chip-green' : attendance?.outAt ? 'chip-grey' : 'chip-blue'}`}>{label}</span>
         </div>
       </div>
-      <p className="tiny muted">फोटो मिलाएँ — फोटो अलग हो तो नकली कार्ड हो सकता है।</p>
+      {warnRepeat && (
+        <div className={`banner ${repeat.alerted ? 'banner-red' : 'banner-amber'}`} role="alert" data-testid="repeat-warning">
+          <b>⚠ {t('यह कार्ड आज {n} बार स्कैन हुआ', { n: repeat.count })}</b>
+          <span>{t('बच्चा {time} पर पहले ही अंदर आ चुका है। फोटो ध्यान से मिलाएँ — कार्ड कोई और इस्तेमाल कर रहा हो सकता है।', { time: time(repeat.firstAt) })}</span>
+          <span className="tiny">{repeat.alerted ? t('प्रिंसिपल / ऑफिस को अलर्ट भेज दिया गया।') : t('अभी-अभी स्कैन हुआ था, इसलिए अलर्ट नहीं भेजा गया।')}</span>
+        </div>
+      )}
+      <p className="tiny muted">{t('फोटो मिलाएँ — फोटो अलग हो तो नकली कार्ड हो सकता है।')}</p>
 
       <div className="msg-line">
-        <span>आने का मैसेज {attendance && time(attendance.inAt)}</span>
+        <span>{t('आने का मैसेज')} {attendance && time(attendance.inAt)}</span>
         {arrivalMessage ? <Ticks status={arrivalMessage.status} /> : <span className="muted">—</span>}
       </div>
       {attendance?.outAt && (
         <div className="msg-line">
-          <span>निकलने का मैसेज {time(attendance.outAt)}</span>
-          {exitMessage ? <Ticks status={exitMessage.status} /> : <span className="muted">{attendance.outMode === 'pickup' ? 'पिकअप से' : '—'}</span>}
+          <span>{t('निकलने का मैसेज')} {time(attendance.outAt)}</span>
+          {exitMessage ? <Ticks status={exitMessage.status} /> : <span className="muted">{attendance.outMode === 'pickup' ? t('पिकअप से') : '—'}</span>}
         </div>
       )}
       {student.phoneStatus === 'failed' && (
-        <p className="alert alert-red">⚠ माँ-बाप का नंबर काम नहीं कर रहा ({student.phoneStatusNote})। ऑफिस को बताएँ।</p>
+        <p className="alert alert-red">⚠ {t('माँ-बाप का नंबर काम नहीं कर रहा ({note})। ऑफिस को बताएँ।', { note: t(student.phoneStatusNote) })}</p>
       )}
 
-      {event === 'arrived' && <p className="tiny muted center">छुट्टी के समय कार्ड दोबारा स्कैन करें — तब निकलने के बटन आएँगे।</p>}
+      {event === 'arrived' && <p className="tiny muted center">{t('छुट्टी के समय कार्ड दोबारा स्कैन करें — तब निकलने के बटन आएँगे।')}</p>}
       {!attendance?.outAt && event !== 'arrived' && (
         openPickupId ? (
-          <button className="btn btn-blue btn-lg mt" onClick={onOpenPickup}>चल रहा पिकअप खोलें →</button>
+          <button className="btn btn-blue btn-lg mt" onClick={onOpenPickup}>{t('चल रहा पिकअप खोलें →')}</button>
         ) : (
           <div className="exit-actions">
-            <button className="btn btn-green btn-lg" onClick={onExit} disabled={busy}>बच्चा निकला (माँ-बाप के साथ)</button>
-            <button className="btn btn-blue btn-lg" onClick={onPickup} disabled={busy}>कोई और लेने आया है</button>
+            <button className="btn btn-green btn-lg" onClick={onExit} disabled={busy}>{t('बच्चा निकला (माँ-बाप के साथ)')}</button>
+            <button className="btn btn-blue btn-lg" onClick={onPickup} disabled={busy}>{t('कोई और लेने आया है')}</button>
           </div>
         )
       )}
-      {attendance?.outAt && <Link to="/gate" className="tiny muted">अगला कार्ड स्कैन करें</Link>}
+      {attendance?.outAt && <Link to="/gate" className="tiny muted">{t('अगला कार्ड स्कैन करें')}</Link>}
     </div>
   );
 }

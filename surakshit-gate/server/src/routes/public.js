@@ -2,7 +2,7 @@ const express = require('express');
 const { rateLimit } = require('express-rate-limit');
 const Pickup = require('../models/Pickup');
 const Student = require('../models/Student');
-const Alert = require('../models/Alert');
+const { raise } = require('../services/alerts');
 const Setting = require('../models/Setting');
 const HttpError = require('../utils/httpError');
 const { sha256 } = require('../utils/crypto');
@@ -29,7 +29,7 @@ router.get('/pickup/:token', async (req, res) => {
   const token = req.params.token;
   const p = await byToken(token);
   const s = await Setting.get();
-  const student = await Student.findById(p.student).select('photo');
+  const student = await Student.findById(p.student).select('photo guardianLang');
   const live = svc.OPEN.includes(p.status);
   if (live && !p.linkOpenedAt) {
     p.linkOpenedAt = new Date();
@@ -39,6 +39,7 @@ router.get('/pickup/:token', async (req, res) => {
   }
   res.setHeader('Cache-Control', 'no-store');
   res.json({
+    lang: student?.guardianLang || 'hi',
     school: s.schoolName,
     officePhone: s.officePhone,
     studentName: p.studentName,
@@ -86,7 +87,7 @@ router.post('/pickup/:token/decision', async (req, res) => {
   );
   if (!updated) throw new HttpError(409, 'आपका जवाब पहले ही दर्ज हो चुका है', { reason: 'DECIDED' });
   if (decision === 'no') {
-    await Alert.create({ type: 'parent_denied', student: p.student, pickup: p._id, className: p.className, text: `${p.studentName} (${p.className}): माँ-बाप ने ${p.pickerName} को बच्चा देने से मना किया।` });
+    await raise('parent_denied', { student: p.student, pickup: p._id, className: p.className }, { student: p.studentName, cls: p.className, picker: p.pickerName });
   }
   res.json({ ok: true, status: updated.status, decision });
 });

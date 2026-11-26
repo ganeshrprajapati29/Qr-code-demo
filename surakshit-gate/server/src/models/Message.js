@@ -10,6 +10,7 @@ const messageSchema = new mongoose.Schema(
     pickup: { type: mongoose.Schema.Types.ObjectId, ref: 'Pickup', default: null },
     kind: { type: String, enum: KINDS, required: true },
     text: { type: String, required: true },
+    lang: { type: String, enum: ['hi', 'en'], default: 'hi' },
     vars: { type: [String], default: [] },
     provider: { type: String, required: true },
     providerId: { type: String, default: null, index: true },

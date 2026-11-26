@@ -21,6 +21,7 @@ function shape(s, { withCard = false } = {}) {
     rollNo: s.rollNo,
     guardianName: s.guardianName,
     guardianPhone: s.guardianPhone,
+    guardianLang: s.guardianLang || 'hi',
     photoUrl: s.photo ? `/api/students/${s._id}/photo?v=${encodeURIComponent(s.photo)}` : null,
     cardVersion: s.cardVersion,
     cardIssuedAt: s.cardIssuedAt,
@@ -37,6 +38,8 @@ function phone(v) {
   if (!isValidPhone(p)) throw new HttpError(400, 'माँ-बाप का सही 10 अंकों का मोबाइल नंबर डालें');
   return p;
 }
+
+const lang = (v) => (v === undefined || v === null || v === '' ? 'hi' : String(v).trim().toLowerCase().startsWith('en') || String(v).trim().toLowerCase() === 'english' ? 'en' : 'hi');
 
 async function load(id) {
   if (!mongoose.isValidObjectId(id)) throw new HttpError(404, 'बच्चा नहीं मिला');
@@ -100,6 +103,7 @@ router.post('/', managers, async (req, res) => {
     rollNo: str(b.rollNo, 'रोल नंबर', { max: 12, optional: true }),
     guardianName: str(b.guardianName, 'अभिभावक का नाम', { max: 60, optional: true }),
     guardianPhone: phone(b.guardianPhone),
+    guardianLang: lang(b.guardianLang),
     cardToken: newCardToken(),
   };
   if (b.photo) data.photo = await saveImage('students', b.photo);
@@ -123,6 +127,7 @@ router.patch('/:id', managers, async (req, res) => {
       s.phoneStatusNote = '';
     }
   }
+  if (b.guardianLang !== undefined) s.guardianLang = lang(b.guardianLang);
   if (b.photo) {
     const old = s.photo;
     s.photo = await saveImage('students', b.photo);
@@ -184,6 +189,7 @@ router.post('/import', managers, async (req, res) => {
         guardianPhone: phone(r[idx.guardianPhone]),
         guardianName: idx.guardianName !== undefined ? str(r[idx.guardianName], 'अभिभावक', { max: 60, optional: true }) : '',
         rollNo: idx.rollNo !== undefined ? str(r[idx.rollNo], 'रोल', { max: 12, optional: true }) : '',
+        guardianLang: idx.guardianLang !== undefined ? lang(r[idx.guardianLang]) : 'hi',
       });
     } catch (e) {
       errors.push({ line, error: e.message });

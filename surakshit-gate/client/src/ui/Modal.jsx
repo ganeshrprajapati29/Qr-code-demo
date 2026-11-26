@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { t } from '../i18n.jsx';
 
 export default function Modal({ title, onClose, children, wide = false }) {
   useEffect(() => {
@@ -16,7 +17,7 @@ export default function Modal({ title, onClose, children, wide = false }) {
       <div className={`sheet ${wide ? 'sheet-wide' : ''}`} role="dialog" aria-modal="true" aria-label={title}>
         <div className="sheet-head">
           <h2>{title}</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="बंद करें">✕</button>
+          <button className="icon-btn" onClick={onClose} aria-label={t('बंद करें')}>✕</button>
         </div>
         {children}
       </div>

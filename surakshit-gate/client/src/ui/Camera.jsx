@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { fileToDataUrl, videoToDataUrl } from '../lib/image.js';
+import { t } from '../i18n.jsx';
 
 // Takes a photo: live camera when possible, phone's camera app as fallback.
 export default function Camera({ onPhoto, facing = 'environment' }) {
@@ -24,7 +25,7 @@ export default function Camera({ onPhoto, facing = 'environment' }) {
       } catch {
         if (alive) {
           setState('error');
-          setError('लाइव कैमरा नहीं खुला। नीचे “फोन के कैमरे से फोटो लें” दबाएँ।');
+          setError(t('लाइव कैमरा नहीं खुला। नीचे “फोन के कैमरे से फोटो लें” दबाएँ।'));
         }
       }
     })();
@@ -56,11 +57,11 @@ export default function Camera({ onPhoto, facing = 'environment' }) {
         <video ref={video} playsInline muted className={state === 'live' ? '' : 'hidden'} />
         {state !== 'live' && <div className="viewer-ph">{state === 'starting' ? <div className="spinner light" /> : <p>{error}</p>}</div>}
         {state === 'live' && (
-          <button className="cam-flip" onClick={() => setMode(mode === 'environment' ? 'user' : 'environment')} aria-label="कैमरा बदलें">⟲</button>
+          <button className="cam-flip" onClick={() => setMode(mode === 'environment' ? 'user' : 'environment')} aria-label={t('कैमरा बदलें')}>⟲</button>
         )}
       </div>
-      {state === 'live' && <button className="shutter" onClick={snap} aria-label="फोटो खींचो"><span /></button>}
-      <button className="btn btn-outline btn-block mt" onClick={() => fileInput.current?.click()}>📷 फोन के कैमरे से फोटो लें</button>
+      {state === 'live' && <button className="shutter" onClick={snap} aria-label={t('फोटो खींचो')}><span /></button>}
+      <button className="btn btn-outline btn-block mt" onClick={() => fileInput.current?.click()}>📷 {t('फोन के कैमरे से फोटो लें')}</button>
       <input ref={fileInput} type="file" accept="image/*" capture={facing} hidden data-testid="camera-file" onChange={(e) => { fromFile(e.target.files?.[0]); e.target.value = ''; }} />
     </div>
   );

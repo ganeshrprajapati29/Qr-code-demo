@@ -1,5 +1,5 @@
 const Pickup = require('../models/Pickup');
-const Alert = require('../models/Alert');
+const { raise } = require('./alerts');
 const Setting = require('../models/Setting');
 const Message = require('../models/Message');
 const { shapeMessage } = require('./notify');
@@ -20,13 +20,7 @@ async function refresh(p, settings) {
     if (now - p.otpSentAt >= s.parentTimeoutMin * 60000) {
       p.noResponseAlertedAt = now;
       await p.save();
-      await Alert.create({
-        type: 'parent_no_response',
-        student: p.student,
-        pickup: p._id,
-        className: p.className,
-        text: `${p.studentName} (${p.className}) के पिकअप पर माँ-बाप ने ${s.parentTimeoutMin} मिनट में जवाब नहीं दिया। ऑफिस से फोन करके पुष्टि करें।`,
-      });
+      await raise('parent_no_response', { student: p.student, pickup: p._id, className: p.className }, { student: p.studentName, cls: p.className, min: s.parentTimeoutMin });
     }
   }
   return p;

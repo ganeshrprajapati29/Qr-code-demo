@@ -17,7 +17,7 @@ const loginLimiter = rateLimit({
   limit: process.env.NODE_ENV === 'test' ? 1000 : 30,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  message: { error: 'बहुत ज़्यादा कोशिशें हुईं। 10 मिनट बाद फिर कोशिश करें।', reason: 'RATE_LIMIT' },
+  handler: (req, res, next) => next(new HttpError(429, 'बहुत ज़्यादा कोशिशें हुईं। 10 मिनट बाद फिर कोशिश करें।', { reason: 'RATE_LIMIT' })),
 });
 
 router.post('/login', loginLimiter, async (req, res) => {

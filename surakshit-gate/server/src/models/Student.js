@@ -7,6 +7,7 @@ const studentSchema = new mongoose.Schema(
     rollNo: { type: String, trim: true, maxlength: 12, default: '' },
     guardianName: { type: String, trim: true, maxlength: 60, default: '' },
     guardianPhone: { type: String, required: true, match: /^[6-9]\d{9}$/ },
+    guardianLang: { type: String, enum: ['hi', 'en'], default: 'hi' }, // language of parent messages & link page
     photo: { type: String, default: '' }, // file name inside uploads/students
     // QR card: random, unguessable; shows neither name nor number
     cardToken: { type: String, required: true, unique: true },

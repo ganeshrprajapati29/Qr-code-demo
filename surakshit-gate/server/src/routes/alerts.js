@@ -7,7 +7,7 @@ const { requireRole } = require('../middleware/auth');
 const router = express.Router();
 router.use(requireRole('admin', 'principal'));
 
-const shape = (a) => ({ id: String(a._id), type: a.type, text: a.text, className: a.className, studentId: a.student ? String(a.student) : null, pickupId: a.pickup ? String(a.pickup) : null, createdAt: a.createdAt, resolvedAt: a.resolvedAt, resolvedBy: a.resolvedBy });
+const shape = (a) => ({ id: String(a._id), type: a.type, text: a.text, textEn: a.textEn || a.text, className: a.className, studentId: a.student ? String(a.student) : null, pickupId: a.pickup ? String(a.pickup) : null, createdAt: a.createdAt, resolvedAt: a.resolvedAt, resolvedBy: a.resolvedBy });
 
 router.get('/', async (req, res) => {
   const q = req.query.all === '1' ? {} : { resolvedAt: null };
